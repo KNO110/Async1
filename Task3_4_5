@@ -1,0 +1,71 @@
+using System;
+using System.Configuration;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
+
+namespace VegetablesAndFruitsApp
+{
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            string connectionString = ConfigurationManager.ConnectionStrings["VegetablesAndFruitsConnectionString"].ConnectionString;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    await connection.OpenAsync();
+                    Console.WriteLine("Подключение к базе данных успешно! Добро пожаловать в мир вкусных данных!");
+
+                    await ShowItemsBelow_CaloriesAsync(connection, 50);
+                    await UpdateItemAsync(connection, 1, "Яблоко", "фрукт", "Красный", 60);
+                    await DeleteItemAsync(connection, 6);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка: {ex.Message}. Похоже, овощи и фрукты сегодня на свежие!");
+                }
+            }
+        }
+
+        static async Task ShowItemsBelow_CaloriesAsync(SqlConnection connection, int calories)
+        {
+            string query = $"SELECT * FROM Items WHERE Calories < {calories}";
+            SqlCommand command = new SqlCommand(query, connection);
+            SqlDataReader reader = await command.ExecuteReaderAsync();
+
+            Console.WriteLine($"\nОвощи и фрукты с калорийностью ниже {calories}:");
+            while (await reader.ReadAsync())
+            {
+                Console.WriteLine($"Название: {reader["Name"]}, Тип: {reader["Type"]}, Цвет: {reader["Color"]}, Калорийность: {reader["Calories"]}");
+            }
+
+            reader.Close();
+        }
+
+        static async Task UpdateItemAsync(SqlConnection connection, int itemId, string name, string type, string color, int calories)
+        {
+            string query = $"UPDATE Items SET Name = @Name, Type = @Type, Color = @Color, Calories = @Calories WHERE ItemID = @ItemId";
+            SqlCommand command = new SqlCommand(query, connection);
+            command.Parameters.AddWithValue("@ItemId", itemId);
+            command.Parameters.AddWithValue("@Name", name);
+            command.Parameters.AddWithValue("@Type", type);
+            command.Parameters.AddWithValue("@Color", color);
+            command.Parameters.AddWithValue("@Calories", calories);
+            int rowsAffected = await command.ExecuteNonQueryAsync();
+
+            Console.WriteLine($"Обновлено {rowsAffected} записей.");
+        }
+
+        static async Task DeleteItemAsync(SqlConnection connection, int itemId)
+        {
+            string query = $"DELETE FROM Items WHERE ItemID = @ItemId";
+            SqlCommand command = new SqlCommand(query, connection);
+            command.Parameters.AddWithValue("@ItemId", itemId);
+            int rowsAffected = await command.ExecuteNonQueryAsync();
+
+            Console.WriteLine($"Удалено {rowsAffected} записей.");
+        }
+    }
+}
